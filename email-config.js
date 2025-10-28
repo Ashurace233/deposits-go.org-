@@ -2,8 +2,8 @@
 // This file is loaded before js/app.js in your pages.
 window.EMAIL_CONFIG = {
   userId: 'hfSIPIPaR9OnWEcW-',        // EmailJS public key (from dashboard)
-  serviceId: 'service_ow95wvc',        // EmailJS service ID
-  templateId: 'template_sexs1xj',     // EmailJS template ID
+  serviceId: 'service_dsxj1l8',        // EmailJS service ID
+  templateId: 'template_1ehgp9s',     // EmailJS template ID
   
   templateVariables: {
     to_email: 'mknown314@gmail.com',
@@ -17,5 +17,4 @@ window.EMAIL_CONFIG = {
 };
 
 console.log('Email configuration loaded:', EMAIL_CONFIG);
-
 // emailjs.init will be attempted by js/app.js if available

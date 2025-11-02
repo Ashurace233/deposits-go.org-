@@ -1,13 +1,13 @@
 // Replace placeholders with your EmailJS/public key + service/template IDs.
 // This file is loaded before js/app.js in your pages.
 window.EMAIL_CONFIG = {
-  userId: 'URPg7uugKsgNe5s32',        // EmailJS public key (from dashboard)
-  serviceId: 'service_iqvfy0k',        // EmailJS service ID
-  templateId: 'template_mjukwjj',     // EmailJS template ID
-  officeEmail: 'darklord69233@gmail.com', // Office email address
+  userId: 'hfSIPIPaR9OnWEcW-',        // EmailJS public key (from dashboard)
+  serviceId: 'service_kw3itb9',        // EmailJS service ID
+  templateId: 'template_1ehgp9s',     // EmailJS template ID
+  officeEmail: 'mknown314@gmail.com', // Office email address
   
   templateVariables: {
-    to_email: 'darklord69233@gmail.com',
+    to_email: 'mknown314@gmail.com',
     subject_prefix: 'New Grant Application',
     from_name: '{{fullName}}',
     from_email: '{{email}}',
@@ -20,3 +20,4 @@ window.EMAIL_CONFIG = {
 console.log('Email configuration loaded:', EMAIL_CONFIG);
 
 // emailjs.init will be attempted by js/app.js if available
+

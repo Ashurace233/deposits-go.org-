@@ -3,7 +3,7 @@
 window.EMAIL_CONFIG = {
   userId: 'hfSIPIPaR9OnWEcW-',        // EmailJS public key (from dashboard)
   serviceId: 'service_kw3itb9',        // EmailJS service ID
-  templateId: 'template_1ehgp9s',     // EmailJS template ID
+  templateId: 'template_edu69qp',     // EmailJS template ID
   officeEmail: 'mknown314@gmail.com', // Office email address
   
   templateVariables: {

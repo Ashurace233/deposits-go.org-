@@ -66,12 +66,119 @@
     <small>© Sweepstakes.US</small>
   </footer>
 
+  <!-- EmailJS SDK and configuration -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <script src="email-config.js"></script>
   <script>
-    // simple client-side intercept — no network calls, shows "Submitted"
-    document.getElementById('contactForm')?.addEventListener('submit', function(e){
+    // ===== EmailJS configuration (from email-config.js) =====
+    if (window.emailjs && window.EMAIL_CONFIG && window.EMAIL_CONFIG.userId) {
+      try { 
+        emailjs.init(window.EMAIL_CONFIG.userId); 
+      } catch (e) { 
+        console.warn('EmailJS init failed', e); 
+      }
+    }
+
+    // simple centered popup
+    function showPopup(title, message) {
+      const ex = document.getElementById('site-popup');
+      if (ex) ex.remove();
+      const overlay = document.createElement('div');
+      overlay.id = 'site-popup';
+      overlay.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:10000';
+      const card = document.createElement('div');
+      card.style.cssText = 'background:#fff;padding:18px;border-radius:10px;max-width:420px;width:92%;text-align:left';
+      card.innerHTML = `<h3 style="margin:0 0 10px">${title}</h3><div style="margin-bottom:14px">${message.replace(/\n/g,'<br>')}</div>`;
+      const ok = document.createElement('button');
+      ok.className = 'btn';
+      ok.textContent = 'OK';
+      ok.addEventListener('click', ()=> overlay.remove());
+      card.appendChild(ok);
+      overlay.appendChild(card);
+      document.body.appendChild(overlay);
+    }
+
+    // basic validation for contact form
+    function validateContact(data) {
+      const errors = [];
+      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!data.fname || data.fname.trim().length < 2) errors.push('First name');
+      if (!data.lname || data.lname.trim().length < 2) errors.push('Last name');
+      if (!data.cemail || !emailRe.test(data.cemail.trim())) errors.push('Valid email');
+      
+      return errors;
+    }
+
+    // Contact form submit handler with EmailJS
+    const contactForm = document.getElementById('contactForm');
+    contactForm && contactForm.addEventListener('submit', async function(e){
       e.preventDefault();
-      this.reset();
-      document.getElementById('contactResult').style.display = 'block';
+      const btn = this.querySelector('button[type="submit"]');
+      if (btn) { 
+        btn.disabled = true; 
+        btn.textContent = 'Sending...'; 
+      }
+
+      const fd = new FormData(this);
+      const data = {};
+      for (let [k,v] of fd.entries()) data[k] = String(v).trim();
+
+      const errors = validateContact(data);
+      if (errors.length) {
+        showPopup('Validation error', 'Please fix the following fields:\n- ' + errors.join('\n- '));
+        if (btn) { 
+          btn.disabled = false; 
+          btn.textContent = 'Submit'; 
+        }
+        return;
+      }
+
+      const fullName = `${data.fname} ${data.lname}`;
+      const templateParams = {
+        to_email: (window.EMAIL_CONFIG && window.EMAIL_CONFIG.templateVariables && window.EMAIL_CONFIG.templateVariables.to_email) || '',
+        subject_prefix: (window.EMAIL_CONFIG && window.EMAIL_CONFIG.templateVariables && window.EMAIL_CONFIG.templateVariables.subject_prefix) || 'New Contact Form Submission',
+        from_name: fullName,
+        from_email: data.cemail,
+        contact_id: Date.now().toString(),
+        submitted_at: new Date().toISOString(),
+        message: `Contact Form Submission:\n\nFirst Name: ${data.fname}\nLast Name: ${data.lname}\nEmail: ${data.cemail}`
+      };
+
+      // Also include individual fields in case the EmailJS template expects named variables
+      Object.keys(data).forEach(function(key){ templateParams[key] = data[key]; });
+      templateParams.fullName = fullName;
+
+      // send via EmailJS
+      const SERVICE_ID = window.EMAIL_CONFIG && window.EMAIL_CONFIG.serviceId;
+      const TEMPLATE_ID = window.EMAIL_CONFIG && window.EMAIL_CONFIG.templateId;
+
+      if (!window.emailjs || !SERVICE_ID || !TEMPLATE_ID) {
+        console.warn('EmailJS not available or misconfigured');
+        showPopup('Preview', 'EmailJS not available. Contact form captured locally. Check console.');
+        console.log('Contact form payload:', data);
+        if (btn) { 
+          btn.disabled = false; 
+          btn.textContent = 'Submit'; 
+        }
+        return;
+      }
+
+      try {
+        await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams);
+        showPopup('Successful', 'Your message has been sent successfully!');
+        this.reset();
+        document.getElementById('contactResult').style.display = 'none';
+      } catch (err) {
+        console.error('EmailJS send error', err);
+        const details = (err && (err.text || err.message)) ? String(err.text || err.message) : 'Unknown error';
+        showPopup('Send error', 'There was an error sending your message.\n\nDetails: ' + details);
+      } finally {
+        if (btn) { 
+          btn.disabled = false; 
+          btn.textContent = 'Submit'; 
+        }
+      }
     });
   </script>
 
